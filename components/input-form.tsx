@@ -21,8 +21,52 @@ To read more about using these font, please visit the Next.js documentation:
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { useState } from "react"
+import toast from "react-hot-toast"
 
 export function InputForm() {
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [file, setFile] = useState<File | null>(null)
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const toast_id = toast.loading('Uploading...')
+    const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+    await wait(1000)
+    try {
+      console.log(file)
+      console.log(firstName)
+      console.log(lastName)
+      console.log(phone)
+      const formData = new FormData()
+      formData.append('file', file!)
+      formData.append('firstName', firstName)
+      formData.append('lastName', lastName)
+      formData.append('phone', phone)
+
+      const res = await fetch('/api/upload-doc', {
+        method: 'POST',
+        body: formData,
+      })
+      if (!res.ok) throw new Error(res.statusText)
+      console.log(res)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${firstName} ${lastName}.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success('Upload Successful', { id: toast_id })
+    }
+    catch (e) {
+      console.log(e)
+      toast.error('Upload Failed', { id: toast_id })
+    }
+  }
+
   return (
     <div className="mx-auto max-w-md space-y-6 py-12">
       <div className="space-y-2 text-center">
@@ -32,31 +76,28 @@ export function InputForm() {
 
       <form
         className="space-y-4"
-        onSubmit={(e) => {
-          e.preventDefault()
-          alert('Submitted!')
-        }}
+        onSubmit={handleSubmit}
       >
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="first-name">First Name</Label>
-            <Input id="first-name" placeholder="John" required />
+            <Input id="first-name" placeholder="John" required value={firstName} onChange={(e) => setFirstName(e.target.value)} />
           </div>
           <div className="space-y-2">
             <Label htmlFor="last-name">Last Name</Label>
-            <Input id="last-name" placeholder="Doe" required />
+            <Input id="last-name" placeholder="Doe" required value={lastName} onChange={(e) => setLastName(e.target.value)} />
           </div>
         </div>
         <div className="space-y-2">
           <Label htmlFor="phone">Phone Number</Label>
-          <Input id="phone" pattern="[0-9]{10}" placeholder="1234567890" required type="tel" />
+          <Input id="phone" pattern="[0-9]{10}" placeholder="1234567890" required type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
           <p className="text-sm text-gray-500 dark:text-gray-400">
             Please enter your phone number in the format 1234567890.
           </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="file">Upload Document</Label>
-          <Input accept=".docx" id="file" required type="file" />
+          <Input accept=".docx" id="file" required type="file" onChange={(e) => setFile(e.target.files?.[0]!)} />
           <p className="text-sm text-gray-500 dark:text-gray-400">Please upload a .docx file.</p>
         </div>
         <Button className="w-full" type="submit">
